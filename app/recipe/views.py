@@ -6,7 +6,8 @@ from core.models import Tag, Ingredient, Recipe
 from recipe.serializers import (
     TagSerializer,
     IngredientSerializer,
-    RecipeSerializer
+    RecipeSerializer,
+    RecipeDetailSerializer
 )
 
 
@@ -52,3 +53,13 @@ class RecipeViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         """Limit querset results to only the authenticated user"""
         return self.queryset.filter(user=self.request.user)
+
+    def get_serializer_class(self):
+        """
+        Return the appropriate serializer class so that the detail
+        serializer is used when retrieving a single record
+        """
+        if self.action == 'retrieve':
+            return RecipeDetailSerializer
+
+        return self.serializer_class
