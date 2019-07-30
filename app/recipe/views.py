@@ -50,9 +50,31 @@ class RecipeViewset(viewsets.ModelViewSet):
     serializer_class = RecipeSerializer
     queryset = Recipe.objects.all()
 
+    def _params_to_ints(self, qs):
+        """
+        Convert a list of string IDs to a list of integers
+
+        :param qs: Query string of comma separated ID's sent in request
+        :type qs: str
+        :return: list
+        """
+        return [int(str_id) for str_id in qs.split(',')]
+
     def get_queryset(self):
-        """Limit querset results to only the authenticated user"""
-        return self.queryset.filter(user=self.request.user)
+        """Limit queryset results to only the authenticated user"""
+        tags_qs = self.request.query_params.get('tags')
+        ingredients_qs = self.request.query_params.get('ingredients')
+        queryset = self.queryset.filter(user=self.request.user)
+
+        if tags_qs:
+            tag_ids = self._params_to_ints(tags_qs)
+            queryset = queryset.filter(tags__id__in=tag_ids)
+
+        if ingredients_qs:
+            ingredient_ids = self._params_to_ints(ingredients_qs)
+            queryset = queryset.filter(ingredients__id__in=ingredient_ids)
+
+        return queryset
 
     def get_serializer_class(self):
         """
