@@ -20,7 +20,17 @@ class BaseRecipeAttrViewSet(mixins.ListModelMixin,
 
     def get_queryset(self):
         """Return objects for the currently authenticated user only"""
-        return self.queryset.filter(user=self.request.user).order_by('-name')
+        queryset = self.queryset.filter(user=self.request.user)
+        # see if client is requesting "assigned_only" tags/ingredients
+        assigned_only = bool(
+            int(self.request.query_params.get('assigned_only', 0))
+        )
+
+        if assigned_only:
+            # get only the tags/ingredients assigned to a recipe
+            queryset = queryset.filter(recipe__isnull=False)
+
+        return queryset.order_by('-name').distinct()
 
     def perform_create(self, serializer):
         """
