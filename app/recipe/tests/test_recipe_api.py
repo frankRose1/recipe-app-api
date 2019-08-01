@@ -1,3 +1,8 @@
+import os
+import tempfile
+
+from PIL import Image
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -10,6 +15,17 @@ from recipe.serializers import RecipeSerializer, RecipeDetailSerializer
 
 
 RECIPES_URL = reverse('recipe:recipe-list')
+
+
+def generate_image_upload_url(recipe_id):
+    """
+    Create and return a url to upload an image for a specific recipe
+
+    :param recipe_id: Recipe model ID
+    :type recipe_id: int
+    :return: int
+    """
+    return reverse('recipe:recipe-upload-image', args=[recipe_id])
 
 
 def sample_recipe(user, **params):
@@ -251,3 +267,45 @@ class PrivateRecipeApiTests(TestCase):
         self.assertIn(serializer1.data, res.data)
         self.assertIn(serializer2.data, res.data)
         self.assertNotIn(serializer3.data, res.data)
+
+
+class RecipeImageUploadTests(TestCase):
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = get_user_model().objects.create(
+            email='testUser@local.host',
+            password='testPass123'
+        )
+        self.client.force_authenticate(user=self.user)
+        self.recipe = sample_recipe(user=self.user)
+
+    def tearDown(self):
+        """Clean the file system after the image upload tests"""
+        self.recipe.image.delete()
+
+    def test_upload_recipe_image_success(self):
+        """Test that images can be uploaded successfully"""
+        url = generate_image_upload_url(recipe_id=self.recipe.id)
+        # create a temprary file on the system and write an image to it
+        with tempfile.NamedTemporaryFile(suffix='.jpg') as ntf:
+            img = Image.new('RGB', (10, 10))
+            img.save(ntf, format='JPEG')
+            ntf.seek(0)
+            res = self.client.post(url,
+                                   {'image': ntf},
+                                   format='multipart')
+
+        self.recipe.refresh_from_db()
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('image', res.data)
+        self.assertTrue(os.path.exists(self.recipe.image.path))
+
+    def test_upload_image_recipe_fail(self):
+        """Test that a 400 is sent for an invalid image"""
+        url = generate_image_upload_url(recipe_id=self.recipe.id)
+        res = self.client.post(url,
+                               {'image': 'notAnImage'},
+                               format='multipart')
+
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
