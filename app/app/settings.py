@@ -127,7 +127,12 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
 
+MEDIA_URL = '/media/'
 STATIC_URL = '/static/'
+
+# tell Django where to store media & static files
+MEDIA_ROOT = '/vol/web/media'
+STATIC_ROOT = '/vol/web/static'
 
 # Custom User class
 AUTH_USER_MODEL = 'core.User'
